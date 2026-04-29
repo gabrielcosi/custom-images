@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate Dashboard",
+  "assignees": ["gabrielcosi"],
+  "labels": ["renovate"],
+  "configMigration": true,
+  "semanticCommits": "enabled",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)([Dd]ocker|[Cc]ontainer)file[^/]*$/"],
+      "matchStrings": [
+        "#\\s?renovate:\\s(?<datasource>\\S+)=(?<depName>\\S+)(?:\\s+registry=(?<registryUrl>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s+FROM\\s+\\S+:(?<currentValue>[\\w+.\\-]+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Automerge container image updates after CI passes",
+      "matchDatasources": ["docker"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    }
+  ]
+}
