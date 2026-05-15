@@ -65,9 +65,16 @@ jobs:
             exit 1
           fi
 
+          # Optional override: when the Dockerfile declares `ARG IMAGE_VERSION=<x>`,
+          # publish under that tag instead of the first-FROM tag. Useful for images
+          # built from a generic base (e.g. node:22-slim) that should track an
+          # unrelated upstream version (e.g. an npm package).
+          image_version="$(awk -F= '/^ARG IMAGE_VERSION=/ {print $2; exit}' "$dockerfile")"
+          tag="${image_version:-$upstream_tag}"
+
           {
             echo "image_dir=$IMAGE_DIR"
-            echo "image_ref=ghcr.io/$REPOSITORY_OWNER/${{ matrix.image }}:$upstream_tag"
+            echo "image_ref=ghcr.io/$REPOSITORY_OWNER/${{ matrix.image }}:$tag"
           } >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
