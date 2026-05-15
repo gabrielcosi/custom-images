@@ -24,6 +24,11 @@
       "automerge": true,
       "automergeType": "pr",
       "platformAutomerge": true
+    },
+    {
+      "description": "Pin iii-hq/iii to 0.11.2 — upstream agentmemory has not migrated to the 0.11.6 sandbox model yet; see https://github.com/rohitg00/agentmemory/blob/main/.env.example section 8",
+      "matchDepNames": ["iii-hq/iii"],
+      "allowedVersions": "0.11.2"
     }
   ]
 }
