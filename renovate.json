@@ -19,8 +19,8 @@
   ],
   "packageRules": [
     {
-      "description": "Automerge container image updates after CI passes",
-      "matchDatasources": ["docker"],
+      "description": "Automerge all updates after CI passes",
+      "matchPackageNames": ["*"],
       "automerge": true,
       "automergeType": "pr",
       "platformAutomerge": true
