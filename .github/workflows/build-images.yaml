@@ -195,3 +195,25 @@ jobs:
         run: |
           printf 'Built image ref: %s\n' "$IMAGE_REF"
           printf 'Source label:    %s\n' "$SOURCE_URL"
+
+  result:
+    name: result
+    needs: [images, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check upstream job results
+        env:
+          IMAGES_RESULT: ${{ needs.images.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          set -euo pipefail
+          echo "images=$IMAGES_RESULT build=$BUILD_RESULT"
+          if [ "$IMAGES_RESULT" != "success" ]; then
+            echo "images job did not succeed" >&2
+            exit 1
+          fi
+          if [ "$BUILD_RESULT" != "success" ] && [ "$BUILD_RESULT" != "skipped" ]; then
+            echo "build job failed" >&2
+            exit 1
+          fi
