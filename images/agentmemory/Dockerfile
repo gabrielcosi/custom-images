@@ -5,7 +5,7 @@ FROM node:24-slim
 ARG IMAGE_VERSION=0.9.14
 
 # renovate: github-releases=iii-hq/iii
-ARG III_VERSION=0.11.2
+ARG III_VERSION=v0.13.0
 
 ENV AGENTMEMORY_DATA_DIR=/data \
     AGENTMEMORY_HMAC_FILE=/data/.hmac \
