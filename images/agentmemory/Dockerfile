@@ -26,7 +26,7 @@ RUN apt-get update \
         | tar -xz -C /usr/local/bin \
     && chmod +x /usr/local/bin/iii \
     && iii --version \
-    && npm install -g --omit=optional --no-fund --no-audit \
+    && npm install -g --ignore-scripts --omit=optional --no-fund --no-audit \
         "@agentmemory/agentmemory@${IMAGE_VERSION}" \
     && find /usr/local/lib/node_modules/@agentmemory/agentmemory \
         -name 'iii-config.yaml' -print0 \
@@ -34,8 +34,10 @@ RUN apt-get update \
     && find /usr/local/lib/node_modules/@agentmemory/agentmemory \
         -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) -print0 \
         | xargs -0 -r sed -i 's/\.listen(port, "127\.0\.0\.1"/.listen(port, "0.0.0.0"/g' \
-    && mkdir -p /data \
-    && chown -R node:node /data /app \
+    && mkdir -p /data /home/node/.agentmemory \
+    && printf '{"schemaVersion":1,"skipSplash":true,"firstRunAt":"1970-01-01T00:00:00.000Z"}\n' \
+        > /home/node/.agentmemory/preferences.json \
+    && chown -R node:node /data /app /home/node/.agentmemory \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /root/.npm
 
