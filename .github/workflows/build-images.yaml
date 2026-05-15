@@ -20,18 +20,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Find image directories
+      - name: Determine changed image directories
         id: images
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          ruby <<'RUBY' >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "$BASE_REF" --depth=50 >/dev/null 2>&1 || true
+            base="origin/$BASE_REF"
+          else
+            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              base="HEAD~1"
+            else
+              base="$BEFORE_SHA"
+            fi
+          fi
+
+          changed=$(git diff --name-only "$base"...HEAD 2>/dev/null || git diff --name-only HEAD)
+
+          ruby <<RUBY >> "$GITHUB_OUTPUT"
           require "json"
 
-          images = Dir.glob("images/*/Dockerfile")
-            .map { |path| path.split("/")[1] }
-            .sort
+          changed = <<~LIST.lines.map(&:strip).reject(&:empty?)
+          $changed
+          LIST
 
-          abort "No images found" if images.empty?
+          all_images = Dir.glob("images/*/Dockerfile").map { |p| p.split("/")[1] }.sort
+          abort "No images found" if all_images.empty?
+
+          rebuild_all = changed.any? { |f|
+            f.start_with?(".github/workflows/") || f == "renovate.json"
+          }
+
+          images =
+            if rebuild_all
+              all_images
+            else
+              changed
+                .select { |f| f.start_with?("images/") }
+                .map    { |f| f.split("/")[1] }
+                .uniq
+                .select { |i| all_images.include?(i) }
+                .sort
+            end
 
           puts "images=#{JSON.generate(images)}"
           RUBY
@@ -39,7 +77,7 @@ jobs:
   build:
     name: Build ${{ matrix.image }}
     needs: images
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: needs.images.outputs.images != '[]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -54,8 +92,13 @@ jobs:
         id: metadata
         env:
           IMAGE_DIR: images/${{ matrix.image }}
+          IMAGE_NAME: ${{ matrix.image }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
+          set -euo pipefail
+
           dockerfile="$IMAGE_DIR/Dockerfile"
           upstream_ref="$(awk '/^FROM /{print $2; exit}' "$dockerfile")"
           upstream_tag="${upstream_ref##*:}"
@@ -66,15 +109,65 @@ jobs:
           fi
 
           # Optional override: when the Dockerfile declares `ARG IMAGE_VERSION=<x>`,
-          # publish under that tag instead of the first-FROM tag. Useful for images
-          # built from a generic base (e.g. node:22-slim) that should track an
-          # unrelated upstream version (e.g. an npm package).
+          # publish under that tag instead of the first-FROM tag.
           image_version="$(awk -F= '/^ARG IMAGE_VERSION=/ {print $2; exit}' "$dockerfile")"
           tag="${image_version:-$upstream_tag}"
 
+          # Identify the renovate annotation that drives the published tag.
+          if grep -qE '^ARG IMAGE_VERSION=' "$dockerfile"; then
+            driving_line=$(grep -nE '^ARG IMAGE_VERSION=' "$dockerfile" | head -n1 | cut -d: -f1)
+          else
+            driving_line=$(grep -nE '^FROM ' "$dockerfile" | head -n1 | cut -d: -f1)
+          fi
+
+          prev_line=$((driving_line - 1))
+          renovate_line=""
+          if [ "$prev_line" -ge 1 ]; then
+            renovate_line=$(sed -n "${prev_line}p" "$dockerfile")
+          fi
+
+          datasource=""
+          depname=""
+          if [[ "$renovate_line" =~ ^[[:space:]]*#[[:space:]]?renovate: ]]; then
+            datasource=$(sed -nE 's/.*renovate:[[:space:]]*([^=]+)=.*/\1/p' <<<"$renovate_line")
+            depname=$(sed -nE 's/.*renovate:[[:space:]]*[^=]+=([^[:space:]]+).*/\1/p' <<<"$renovate_line")
+          fi
+
+          # Resolve upstream GitHub repo for the OCI source label (priority chain):
+          #   1. Explicit `# upstream-repo: owner/repo` hint in the Dockerfile.
+          #   2. renovate `github-releases=owner/repo` annotation on the driving line.
+          #   3. `FROM ghcr.io/owner/repo:...` when FROM drives the tag.
+          upstream_repo=$(grep -E '^[[:space:]]*#[[:space:]]?upstream-repo:' "$dockerfile" \
+            | head -n1 | sed -nE 's/.*upstream-repo:[[:space:]]*([^[:space:]]+).*/\1/p' || true)
+
+          if [ -z "$upstream_repo" ] && [ "$datasource" = "github-releases" ]; then
+            upstream_repo="$depname"
+          fi
+
+          if [ -z "$upstream_repo" ]; then
+            from_ref=$(awk '/^FROM /{print $2; exit}' "$dockerfile")
+            if ! grep -qE '^ARG IMAGE_VERSION=' "$dockerfile" && [[ "$from_ref" == ghcr.io/*/*:* ]]; then
+              stripped="${from_ref#ghcr.io/}"
+              upstream_repo="${stripped%:*}"
+            fi
+          fi
+
+          if [ -n "$upstream_repo" ]; then
+            source_url="https://github.com/$upstream_repo"
+            echo "Resolved upstream source: $source_url"
+          else
+            # Fallback so the label is always populated. Consumers will fall back
+            # to looking for releases in this repo (we don't publish any), which
+            # is fine — they just won't see release notes. Add a
+            # `# upstream-repo: owner/repo` line to $dockerfile to fix.
+            source_url="$SERVER_URL/$REPOSITORY"
+            echo "No upstream repo resolved; defaulting source label to $source_url"
+          fi
+
           {
             echo "image_dir=$IMAGE_DIR"
-            echo "image_ref=ghcr.io/$REPOSITORY_OWNER/${{ matrix.image }}:$tag"
+            echo "image_ref=ghcr.io/$REPOSITORY_OWNER/$IMAGE_NAME:$tag"
+            echo "source_url=$source_url"
           } >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
@@ -92,7 +185,13 @@ jobs:
           file: ${{ steps.metadata.outputs.image_dir }}/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.metadata.outputs.image_ref }}
+          labels: |
+            org.opencontainers.image.source=${{ steps.metadata.outputs.source_url }}
 
       - name: Verify image ref
+        env:
+          IMAGE_REF: ${{ steps.metadata.outputs.image_ref }}
+          SOURCE_URL: ${{ steps.metadata.outputs.source_url }}
         run: |
-          printf 'Built image ref: %s\n' '${{ steps.metadata.outputs.image_ref }}'
+          printf 'Built image ref: %s\n' "$IMAGE_REF"
+          printf 'Source label:    %s\n' "$SOURCE_URL"
