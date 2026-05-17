@@ -18,7 +18,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN /opt/hermes/.venv/bin/pip install --no-cache-dir 'python-telegram-bot[webhooks]==22.6'
+RUN VIRTUAL_ENV=/opt/hermes/.venv uv pip install --no-cache 'python-telegram-bot[webhooks]==22.6'
 
 RUN devbox_asset="devbox_${DEVBOX_VERSION}_linux_amd64.tar.gz" \
     && curl -fsSLO "https://github.com/jetify-com/devbox/releases/download/${DEVBOX_VERSION}/${devbox_asset}" \
