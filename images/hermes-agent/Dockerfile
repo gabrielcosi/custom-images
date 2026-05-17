@@ -14,6 +14,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        file \
+        gcc \
+        libc6-dev \
+        make \
+        procps \
         xz-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -56,6 +61,12 @@ USER 10000:10000
 
 RUN git clone --depth 1 https://github.com/Homebrew/brew /opt/homebrew \
     && /opt/homebrew/bin/brew --version
+
+USER root:root
+
+RUN ln -sf /opt/homebrew/bin/brew /usr/local/bin/brew
+
+USER 10000:10000
 
 RUN git clone --depth 1 --branch "v${AGENTMEMORY_VERSION}" https://github.com/rohitg00/agentmemory /tmp/agentmemory-src \
     && cp -a /tmp/agentmemory-src/integrations/hermes/. /opt/agentmemory/ \
