@@ -33,7 +33,7 @@ RUN apt-get update \
         | xargs -0 -r sed -i 's/host: 127\.0\.0\.1/host: 0.0.0.0/g' \
     && find /usr/local/lib/node_modules/@agentmemory/agentmemory \
         -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) -print0 \
-        | xargs -0 -r sed -i 's/\.listen(port, "127\.0\.0\.1"/.listen(port, "0.0.0.0"/g' \
+        | xargs -0 -r sed -i -E 's/\.listen\(([^,]+), *"(127\.0\.0\.1|localhost)"/.listen(\1, "0.0.0.0"/g' \
     && mkdir -p /data /home/node/.agentmemory \
     && printf '{"schemaVersion":1,"skipSplash":true,"firstRunAt":"1970-01-01T00:00:00.000Z"}\n' \
         > /home/node/.agentmemory/preferences.json \
