@@ -23,7 +23,9 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN VIRTUAL_ENV=/opt/hermes/.venv uv pip install --no-cache 'python-telegram-bot[webhooks]==22.6'
+RUN VIRTUAL_ENV=/opt/hermes/.venv \
+    && HERMES_VERSION=$(uv pip show hermes-agent | awk '/^Version:/ {print $2}') \
+    && uv pip install --no-cache "hermes-agent[firecrawl,messaging]==${HERMES_VERSION}"
 
 RUN devbox_asset="devbox_${DEVBOX_VERSION}_linux_amd64.tar.gz" \
     && curl -fsSLO "https://github.com/jetify-com/devbox/releases/download/${DEVBOX_VERSION}/${devbox_asset}" \
