@@ -37,15 +37,15 @@ RUN devbox_asset="devbox_${DEVBOX_VERSION}_linux_amd64.tar.gz" \
     && chmod 0755 /usr/local/bin/devbox \
     && rm -rf /tmp/devbox "${devbox_asset}" checksums.txt
 
-RUN mkdir -p /nix /opt/homebrew /opt/agentmemory /opt/data/home \
-    && chown -R 10000:10000 /nix /opt/homebrew /opt/agentmemory /opt/data
+RUN mkdir -p /nix /home/linuxbrew/.linuxbrew /opt/agentmemory /opt/data/home \
+    && chown -R 10000:10000 /nix /home/linuxbrew /opt/agentmemory /opt/data
 
 USER 10000:10000
 
 ENV HOME=/opt/data/home
 ENV USER=hermes
 ENV NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-ENV PATH=/opt/data/bin:/opt/hermes/.venv/bin:/opt/homebrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV PATH=/opt/data/bin:/opt/hermes/.venv/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN curl -fsSL "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" | sh -s -- --no-daemon \
     && . /opt/data/home/.nix-profile/etc/profile.d/nix.sh \
@@ -61,14 +61,8 @@ RUN find /nix/store -path '*/bin/nix' -type f -exec dirname {} \; | head -n 1 \
 
 USER 10000:10000
 
-RUN git clone --depth 1 https://github.com/Homebrew/brew /opt/homebrew \
-    && /opt/homebrew/bin/brew --version
-
-USER root:root
-
-RUN ln -sf /opt/homebrew/bin/brew /usr/local/bin/brew
-
-USER 10000:10000
+RUN git clone --depth 1 https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew \
+    && /home/linuxbrew/.linuxbrew/bin/brew --version
 
 RUN git clone --depth 1 --branch "v${AGENTMEMORY_VERSION}" https://github.com/rohitg00/agentmemory /tmp/agentmemory-src \
     && cp -a /tmp/agentmemory-src/integrations/hermes/. /opt/agentmemory/ \
