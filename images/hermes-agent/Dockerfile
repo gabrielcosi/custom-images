@@ -6,7 +6,7 @@ ARG DEVBOX_VERSION=0.17.2
 # renovate: github-releases=NixOS/nix
 ARG NIX_VERSION=2.34.6
 # renovate: github-releases=rohitg00/agentmemory
-ARG AGENTMEMORY_VERSION=0.9.25
+ARG AGENTMEMORY_VERSION=0.9.26
 
 USER root:root
 
