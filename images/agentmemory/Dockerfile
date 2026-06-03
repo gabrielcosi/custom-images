@@ -2,7 +2,7 @@
 FROM node:24-slim
 
 # renovate: npm=@agentmemory/agentmemory
-ARG IMAGE_VERSION=0.9.25
+ARG IMAGE_VERSION=0.9.26
 
 # renovate: github-releases=iii-hq/iii
 ARG III_VERSION=0.11.2
