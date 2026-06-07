@@ -2,7 +2,7 @@
 FROM nousresearch/hermes-agent:v2026.5.16
 
 # renovate: github-releases=jetify-com/devbox
-ARG DEVBOX_VERSION=0.17.2
+ARG DEVBOX_VERSION=0.17.3
 # renovate: github-releases=NixOS/nix
 ARG NIX_VERSION=2.34.6
 # renovate: github-releases=rohitg00/agentmemory
