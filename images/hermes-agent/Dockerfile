@@ -1,5 +1,5 @@
 # renovate: docker=nousresearch/hermes-agent
-FROM nousresearch/hermes-agent:v2026.5.16
+FROM nousresearch/hermes-agent:v2026.6.5
 
 # renovate: github-releases=jetify-com/devbox
 ARG DEVBOX_VERSION=0.17.3
