@@ -1,5 +1,5 @@
 # renovate: docker=nousresearch/hermes-agent
-FROM nousresearch/hermes-agent:v2026.6.5
+FROM nousresearch/hermes-agent:v2026.6.19
 
 # renovate: github-releases=eleboucher/memini
 ARG MEMINI_VERSION=0.4.9
