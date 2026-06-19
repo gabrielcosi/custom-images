@@ -67,5 +67,24 @@ class Crawl4aiWebSearchProvider(WebSearchProvider):
         return out
 
 
+def _teach_web_tools_gate() -> None:
+    try:
+        import tools.web_tools as wt
+    except Exception:
+        return
+    orig = getattr(wt, "_is_backend_available", None)
+    if orig is None or getattr(orig, "_crawl4ai_wrapped", False):
+        return
+
+    def _is_backend_available(backend: str) -> bool:
+        if backend == "crawl4ai":
+            return bool(os.getenv("CRAWL4AI_API_URL", "").strip())
+        return orig(backend)
+
+    _is_backend_available._crawl4ai_wrapped = True
+    wt._is_backend_available = _is_backend_available
+
+
 def register(ctx) -> None:
     ctx.register_web_search_provider(Crawl4aiWebSearchProvider())
+    _teach_web_tools_gate()
