@@ -22,6 +22,11 @@ RUN VIRTUAL_ENV=/opt/hermes/.venv \
     && HERMES_VERSION=$(uv pip show hermes-agent | awk '/^Version:/ {print $2}') \
     && uv pip install --no-cache "hermes-agent[firecrawl,messaging]==${HERMES_VERSION}"
 
+COPY crawl4ai /tmp/crawl4ai-plugin
+RUN cp -a /tmp/crawl4ai-plugin "$(/opt/hermes/.venv/bin/python -c 'import pathlib, plugins; print(pathlib.Path(plugins.__file__).parent / "web" / "crawl4ai")')" \
+    && rm -rf /tmp/crawl4ai-plugin \
+    && /opt/hermes/.venv/bin/python -c "from plugins.web.crawl4ai import Crawl4aiWebSearchProvider, register; assert Crawl4aiWebSearchProvider().name == 'crawl4ai'"
+
 RUN mkdir -p /home/linuxbrew/.linuxbrew /opt/memini /opt/data/home \
     && chown -R 10000:10000 /home/linuxbrew /opt/memini /opt/data
 
