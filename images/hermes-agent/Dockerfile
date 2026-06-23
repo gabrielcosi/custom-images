@@ -1,3 +1,4 @@
+# upstream-repo: NousResearch/hermes-agent
 # renovate: docker=nousresearch/hermes-agent
 FROM nousresearch/hermes-agent:v2026.6.19
 
