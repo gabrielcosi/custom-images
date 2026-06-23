@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -86,10 +86,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Read image configuration
-        id: metadata
+        id: config
         env:
           IMAGE_DIR: images/${{ matrix.image }}
           IMAGE_NAME: ${{ matrix.image }}
@@ -108,12 +108,9 @@ jobs:
             exit 1
           fi
 
-          # Optional override: when the Dockerfile declares `ARG IMAGE_VERSION=<x>`,
-          # publish under that tag instead of the first-FROM tag.
           image_version="$(awk -F= '/^ARG IMAGE_VERSION=/ {print $2; exit}' "$dockerfile")"
           tag="${image_version:-$upstream_tag}"
 
-          # Identify the renovate annotation that drives the published tag.
           if grep -qE '^ARG IMAGE_VERSION=' "$dockerfile"; then
             driving_line=$(grep -nE '^ARG IMAGE_VERSION=' "$dockerfile" | head -n1 | cut -d: -f1)
           else
@@ -133,10 +130,6 @@ jobs:
             depname=$(sed -nE 's/.*renovate:[[:space:]]*[^=]+=([^[:space:]]+).*/\1/p' <<<"$renovate_line")
           fi
 
-          # Resolve upstream GitHub repo for the OCI source label (priority chain):
-          #   1. Explicit `# upstream-repo: owner/repo` hint in the Dockerfile.
-          #   2. renovate `github-releases=owner/repo` annotation on the driving line.
-          #   3. `FROM ghcr.io/owner/repo:...` when FROM drives the tag.
           upstream_repo=$(grep -E '^[[:space:]]*#[[:space:]]?upstream-repo:' "$dockerfile" \
             | head -n1 | sed -nE 's/.*upstream-repo:[[:space:]]*([^[:space:]]+).*/\1/p' || true)
 
@@ -156,42 +149,65 @@ jobs:
             source_url="https://github.com/$upstream_repo"
             echo "Resolved upstream source: $source_url"
           else
-            # Fallback so the label is always populated. Consumers will fall back
-            # to looking for releases in this repo (we don't publish any), which
-            # is fine — they just won't see release notes. Add a
-            # `# upstream-repo: owner/repo` line to $dockerfile to fix.
             source_url="$SERVER_URL/$REPOSITORY"
             echo "No upstream repo resolved; defaulting source label to $source_url"
           fi
 
           {
             echo "image_dir=$IMAGE_DIR"
+            echo "tag=$tag"
             echo "image_ref=ghcr.io/$REPOSITORY_OWNER/$IMAGE_NAME:$tag"
             echo "source_url=$source_url"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Generate OCI metadata
+        id: meta
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=${{ steps.config.outputs.tag }}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.source=${{ steps.config.outputs.source_url }}
+            org.opencontainers.image.url=${{ steps.config.outputs.source_url }}
+
+      - name: Derive manifest annotations from labels
+        id: anno
+        env:
+          LABELS: ${{ steps.meta.outputs.labels }}
+        run: |
+          set -euo pipefail
+          {
+            echo "annotations<<__ANNO_EOF__"
+            while IFS= read -r label; do
+              [ -n "$label" ] && printf 'manifest:%s\n' "$label"
+            done <<< "$LABELS"
+            echo "__ANNO_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Login to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
-          context: ${{ steps.metadata.outputs.image_dir }}
-          file: ${{ steps.metadata.outputs.image_dir }}/Dockerfile
+          context: ${{ steps.config.outputs.image_dir }}
+          file: ${{ steps.config.outputs.image_dir }}/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.metadata.outputs.image_ref }}
-          labels: |
-            org.opencontainers.image.source=${{ steps.metadata.outputs.source_url }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.anno.outputs.annotations }}
 
       - name: Verify image ref
         env:
-          IMAGE_REF: ${{ steps.metadata.outputs.image_ref }}
-          SOURCE_URL: ${{ steps.metadata.outputs.source_url }}
+          IMAGE_REF: ${{ steps.config.outputs.image_ref }}
+          SOURCE_URL: ${{ steps.config.outputs.source_url }}
         run: |
           printf 'Built image ref: %s\n' "$IMAGE_REF"
           printf 'Source label:    %s\n' "$SOURCE_URL"
