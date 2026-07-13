@@ -1,5 +1,5 @@
 # renovate: docker=ghcr.io/mostlygeek/llama-swap versioning=regex:^v(?<major>\d+)-(?<compatibility>cuda\d+)-b(?<build>\d+)$
-FROM ghcr.io/mostlygeek/llama-swap:v239-cuda13-b9976
+FROM ghcr.io/mostlygeek/llama-swap:v239-cuda13-b9982
 
 USER root
 
