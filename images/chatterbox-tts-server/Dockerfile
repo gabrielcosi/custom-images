@@ -1,4 +1,4 @@
-FROM docker.io/nvidia/cuda:13.3.0-runtime-ubuntu22.04
+FROM docker.io/nvidia/cuda:13.3.1-runtime-ubuntu22.04
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
