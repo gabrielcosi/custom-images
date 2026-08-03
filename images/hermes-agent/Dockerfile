@@ -1,6 +1,6 @@
 # upstream-repo: NousResearch/hermes-agent
 # renovate: docker=nousresearch/hermes-agent
-FROM nousresearch/hermes-agent:v2026.7.30
+FROM nousresearch/hermes-agent:v2026.8.3
 
 # renovate: github-tags=eleboucher/memini
 ARG MEMINI_VERSION=0.7.17
