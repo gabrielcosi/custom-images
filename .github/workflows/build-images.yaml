@@ -13,7 +13,7 @@ permissions:
 jobs:
   images:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       images: ${{ steps.images.outputs.images }}
 
@@ -78,7 +78,7 @@ jobs:
     name: Build ${{ matrix.image }}
     needs: images
     if: needs.images.outputs.images != '[]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -216,7 +216,7 @@ jobs:
     name: result
     needs: [images, build]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Check upstream job results
         env:
