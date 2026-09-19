@@ -3,7 +3,7 @@
 FROM nousresearch/hermes-agent:v2026.9.14
 
 # renovate: github-tags=eleboucher/memini
-ARG MEMINI_VERSION=0.7.29
+ARG MEMINI_VERSION=0.7.32
 
 USER root:root
 
