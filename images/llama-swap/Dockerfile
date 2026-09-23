@@ -1,6 +1,6 @@
 # upstream-repo: mostlygeek/llama-swap
 # renovate: docker=ghcr.io/mostlygeek/llama-swap versioning=regex:^v(?<major>\d+)-(?<compatibility>cuda\d+)-b(?<build>\d+)-non-root$
-ARG IMAGE_VERSION=v257-cuda13-b11096-non-root
+ARG IMAGE_VERSION=v257-cuda13-b11118-non-root
 
 FROM golang:1.27-bookworm AS vllm-wrapper
 
